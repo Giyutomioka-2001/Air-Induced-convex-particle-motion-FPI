@@ -1,0 +1,81 @@
+% MATLAB Code for Simulating Pentagon-Shaped Particles in a Circular Ring (2D)
+
+clc; clear; close all;
+
+%% Simulation Parameters
+N_particles = 20; % Number of pentagon particles
+radius = 10; % Radius of the circular domain
+edge_pentagon = 1;
+area_disc = 22/7% Side length of the pentagon
+Nx = 50; Ny = 50; % Grid resolution
+Lx = 2*radius; Ly = 2*radius; % Domain size
+dx = Lx/Nx; dy = Ly/Ny;
+
+%% Initialize Particles
+particles = struct('position', [], 'velocity', [], 'orientation', [], 'lift_force', []);
+for i = 1:N_particles
+    theta = rand * 2 * pi;
+    r = (radius - edge_pentagon) * sqrt(rand);
+    x = r * cos(theta);
+    y = r * sin(theta);
+    particles(i).position = [x, y];
+    particles(i).velocity = 0.1 * (2 * rand(1,2) - 1); % Small random initial velocity
+    particles(i).orientation = rand * 2 * pi; % Random orientation
+    particles(i).lift_force = [0, 0]; % Initialize Lift force
+end
+
+%% Lift Force Calculation (Simplified)
+Cl = 0.5; % Assumed moderate lift coefficient
+V_air = 0.5; % Moderate air velocity
+rho_air = 1.2; % Air density
+A_pentagon = (5/2) * edge_pentagon^2 ; % Approx. area of pentagon
+
+for i = 1:N_particles
+    v_mag = norm(particles(i).velocity);
+    lift_magnitude = 0.5 * rho_air * V_air^2 * Cl * A_pentagon;
+    lift_direction = [-particles(i).velocity(2), particles(i).velocity(1)];
+    lift_direction = lift_direction / norm(lift_direction); % Perpendicular to velocity
+    particles(i).lift_force = lift_magnitude * lift_direction;
+end
+
+%% Simulation Loop
+T = 10; dt = 0.01;
+timesteps = T/dt;
+figure;
+for t = 1:timesteps
+    for i = 1:N_particles
+        % Update velocity using only lift force
+        particles(i).velocity = particles(i).velocity + dt * particles(i).lift_force;
+        % Update position
+        particles(i).position = particles(i).position + dt * particles(i).velocity;
+        % Handle collisions with circular boundary
+        r_current = norm(particles(i).position);
+        if r_current > radius - edge_pentagon
+            particles(i).velocity = -particles(i).velocity; % Reflect back
+        end
+    end
+    
+    % Compute area fraction grid
+    area_fraction = zeros(Nx, Ny);
+    for i = 1:N_particles
+        x_idx = min(max(round((particles(i).position(1) + radius) / dx), 1), Nx);
+        y_idx = min(max(round((particles(i).position(2) + radius) / dy), 1), Ny);
+        area_fraction(x_idx, y_idx) = area_fraction(x_idx, y_idx) + A_pentagon / (dx * dy);
+    end
+    
+    % Visualization
+    if mod(t, 10) == 0
+        clf;
+        imagesc(linspace(-radius, radius, Nx), linspace(-radius, radius, Ny), area_fraction');
+        hold on;
+        for i = 1:N_particles
+            plot(particles(i).position(1), particles(i).position(2), 'ro', 'MarkerSize', 8, 'MarkerFaceColor', 'r');
+        end
+        colorbar;
+        title(['Time: ', num2str(t * dt)]);
+        axis equal;
+        xlim([-radius, radius]);
+        ylim([-radius, radius]);
+        drawnow;
+    end
+end
