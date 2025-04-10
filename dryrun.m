@@ -1,5 +1,5 @@
 % Define the number of intervals
-intervals = [8, 16, 32, 64];
+intervals = [8, 16, 32];
 
 % Define selected points where error will be measured
 selected_points = [-0.5, 0, 0.5]; 
